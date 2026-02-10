@@ -2,22 +2,16 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import PostStatus from '@/models/PostStatus';
 import Post from '@/models/Post';
-import { verifyToken } from '@/lib/auth';
+import { getUserFromRequest } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req) {
     try {
         // Verify user authentication
-        const authHeader = req.headers.get('authorization');
-        if (!authHeader) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
-        const token = authHeader.replace('Bearer ', '');
-        const decoded = verifyToken(token);
+        const decoded = await getUserFromRequest(req);
         if (!decoded) {
-            return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
         await dbConnect();
