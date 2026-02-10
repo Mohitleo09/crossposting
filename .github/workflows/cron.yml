@@ -1,7 +1,7 @@
 name: Trigger Cron Job
 on:
   schedule:
-    - cron: '0 * * * *' # Run every hour
+    - cron: '*/01 * * * *' # Run every 01 minutes
   workflow_dispatch: # Allow manual trigger
 
 jobs:
