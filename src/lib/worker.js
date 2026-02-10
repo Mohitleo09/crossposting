@@ -134,7 +134,14 @@ async function repostToTwitter(post, account, status) {
             body: JSON.stringify(tweetBody)
         });
 
-        const data = await response.json();
+        const responseText = await response.text();
+        let data;
+        try {
+            data = JSON.parse(responseText);
+        } catch (e) {
+            throw new Error(`Twitter API returned non-JSON: ${responseText.substring(0, 200)}...`);
+        }
+
         if (data.data) {
             status.status = 'success';
             status.externalPostId = data.data.id;
@@ -155,7 +162,19 @@ async function repostToYouTube(post, account, status) {
     status.status = 'processing';
     await status.save();
 
-    let title = post.caption ? post.caption.substring(0, 100) : 'New Post';
+    // Sanitize Title for YouTube:
+    // 1. Remove emojis (basic range check)
+    // 2. Limit to 100 chars
+    // 3. Ensure not empty
+    let cleanCaption = post.caption ? post.caption.replace(/[\u1000-\uFFFF]+/g, '').trim() : '';
+    // Also remove any newlines for the title
+    cleanCaption = cleanCaption.split('\n')[0].trim();
+
+    let title = cleanCaption.substring(0, 100);
+    if (!title || title.length < 2) {
+        title = `New Instagram Video ${new Date().toLocaleDateString()}`;
+    }
+
     let description = post.caption || '';
 
     const token = await getValidToken(account);
