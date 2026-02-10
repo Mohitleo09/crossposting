@@ -75,7 +75,14 @@ async function repostToTwitter(post, account, status) {
                     media_category: mediaCategory
                 })
             });
-            const initData = await initRes.json();
+
+            const initText = await initRes.text();
+            let initData;
+            try {
+                initData = JSON.parse(initText);
+            } catch (e) {
+                throw new Error(`Twitter INIT returned non-JSON (status ${initRes.status}): ${initText.substring(0, 200)}`);
+            }
 
             if (!initData.media_id_string) {
                 throw new Error(`Twitter Media Init Failed: ${JSON.stringify(initData)}`);
@@ -91,11 +98,16 @@ async function repostToTwitter(post, account, status) {
             const filename = contentType.startsWith('video') ? 'media.mp4' : 'media.jpg';
             formData.append('media', new Blob([buffer]), filename);
 
-            await fetch(uploadUrl, {
+            const appendRes = await fetch(uploadUrl, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` },
                 body: formData
             });
+
+            if (!appendRes.ok) {
+                const appendText = await appendRes.text();
+                throw new Error(`Twitter APPEND failed (status ${appendRes.status}): ${appendText.substring(0, 200)}`);
+            }
 
             // FINALIZE
             const finRes = await fetch(uploadUrl, {
@@ -109,7 +121,14 @@ async function repostToTwitter(post, account, status) {
                     media_id: mediaId
                 })
             });
-            const finData = await finRes.json();
+
+            const finText = await finRes.text();
+            let finData;
+            try {
+                finData = JSON.parse(finText);
+            } catch (e) {
+                throw new Error(`Twitter FINALIZE returned non-JSON (status ${finRes.status}): ${finText.substring(0, 200)}`);
+            }
 
             // Wait for processing if video
             if (finData.processing_info) {
