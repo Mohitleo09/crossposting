@@ -1,7 +1,7 @@
 name: Trigger Cron Job
 on:
   schedule:
-    - cron: '*/01 * * * *' # Run every 01 minutes
+    - cron: '*/5 * * * *' # GitHub Actions minimum reliable interval is ~5 minutes. 1 minute is often skipped.
   workflow_dispatch: # Allow manual trigger
 
 jobs:
