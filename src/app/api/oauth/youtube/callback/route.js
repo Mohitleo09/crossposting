@@ -106,12 +106,12 @@ export async function GET(req) {
 
         // Use the correct base URL for redirect (HTTPS)
         // Use the correct base URL for redirect (HTTPS)
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://localhost:3001';
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
         return NextResponse.redirect(new URL('/?connect=youtube&status=success', baseUrl));
 
     } catch (error) {
         console.error('YouTube Callback Error:', error);
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://localhost:3001';
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
         return NextResponse.redirect(new URL(`/?connect=youtube&status=error&message=${encodeURIComponent(error.message)}`, baseUrl));
     }
 }

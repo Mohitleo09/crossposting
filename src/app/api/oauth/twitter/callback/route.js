@@ -104,7 +104,7 @@ export async function GET(req) {
         console.log('✅ Twitter OAuth completed successfully');
 
         // 4. FINAL REDIRECT (Mandatory UX Step)
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://localhost:3001';
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
         const response = NextResponse.redirect(new URL('/?connect=twitter&status=success', baseUrl));
 
         // Cleanup the verifier cookie
@@ -114,7 +114,7 @@ export async function GET(req) {
 
     } catch (err) {
         console.error('Unexpected Twitter OAuth error:', err);
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://localhost:3001';
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
         return NextResponse.redirect(new URL(`/?connect=twitter&status=error&message=${encodeURIComponent(err.message)}`, baseUrl));
     }
 }
