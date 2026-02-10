@@ -10,6 +10,7 @@ import Contact from './components/contact';
 import PrivacyPolicy from './components/PrivacyPolicy';
 import Terms from './components/terms';
 import CookiePolicy from './components/cookiepolicy';
+import Status from './components/Status';
 
 export default function Page() {
   const [currentPage, setCurrentPage] = useState('landing');
@@ -210,7 +211,6 @@ export default function Page() {
             }}
           />
         );
-      case 'cookie':
         return (
           <CookiePolicy
             onLoginClick={() => navigateToPage('login')}
@@ -223,6 +223,12 @@ export default function Page() {
               navigateToPage('landing');
             }}
           />
+        );
+      case 'status':
+        return (
+          <div className="pt-20">
+            <Status />
+          </div>
         );
       default:
         return <LandingPage />;

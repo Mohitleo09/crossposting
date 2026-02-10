@@ -1,42 +1,53 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import PostStatus from '@/models/PostStatus';
-import { getUserFromRequest } from '@/lib/auth';
+import Post from '@/models/Post';
+import { verifyToken } from '@/lib/auth';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(req) {
     try {
-        const user = await getUserFromRequest(req);
-        if (!user) {
+        // Verify user authentication
+        const authHeader = req.headers.get('authorization');
+        if (!authHeader) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const token = authHeader.replace('Bearer ', '');
+        const decoded = verifyToken(token);
+        if (!decoded) {
+            return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
         }
 
         await dbConnect();
 
-        // Find statuses for posts belonging to this user
-        // We'll join with the Post model
-        const statuses = await PostStatus.find()
-            .populate({
-                path: 'postId',
-                match: { userId: user.userId }
-            })
+        // Fetch post statuses for this user's posts
+        const statuses = await PostStatus.find({})
+            .populate('postId')
             .sort({ createdAt: -1 })
             .limit(50);
 
-        // Filter out statuses where the populated postId is null (meaning it belongs to another user)
-        const userStatuses = statuses.filter(s => s.postId !== null);
+        // Filter to only show posts belonging to this user
+        const userStatuses = statuses.filter(s =>
+            s.postId && s.postId.userId && s.postId.userId.toString() === decoded.userId
+        );
 
-        const formatted = userStatuses.map(s => ({
-            id: s.externalPostId || s._id,
-            platform: s.platform,
-            status: s.status,
-            created_at: s.createdAt.toISOString(),
-            last_error: s.errorMessage,
-            media_url: s.postId.mediaUrl
+        // Transform to match the expected format for Status.jsx
+        const formattedStatuses = userStatuses.map(status => ({
+            id: status._id.toString(),
+            platform: status.platform,
+            status: status.status,
+            instagram_media_id: status.postId?.sourcePostId || '',
+            last_error: status.errorMessage || null,
+            created_at: status.createdAt,
+            updated_at: status.updatedAt
         }));
 
-        return NextResponse.json(formatted);
+        return NextResponse.json(formattedStatuses);
+
     } catch (error) {
-        console.error('Fetch status error:', error);
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+        console.error('Status fetch error:', error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
