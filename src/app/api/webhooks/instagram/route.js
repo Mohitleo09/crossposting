@@ -28,29 +28,40 @@ export async function POST(req) {
             for (const entry of payload.entry || []) {
                 const igUserId = entry.id; // Instagram Business Account ID
 
-                // Changes array might contain multiple updates
                 for (const change of entry.changes || []) {
-                    // We only care about new media being published or status updates
-                    // However, 'media' field is unreliable for realtime.
-                    // Usually we subscribe to 'story_insights' or others but 'media' is standard.
-                    // Wait, standard webhook field is just 'media' or 'mentions'.
-                    // Actually, for Instagram Graph API, efficient way is subscription to 'media' field on the User node.
+                    const field = change.field;
+                    const value = change.value;
 
-                    // The payload structure for 'media' field update:
-                    // val: { id: 'media_id' }
-
-                    // But wait, standard IG webhook for new post is confusing.
-                    // Let's assume user subscribes to 'media'.
-
-                    if (change.field === 'media' || change.field === 'media_product_type') {
-                        // Note: 'media' field update usually just gives ID.
-                        // We fetch details anyway.
-                        const mediaId = change.value.id;
-
-                        // Async processing (fire and forget for quick response to FB)
-                        processInstagramMedia(mediaId, igUserId).catch(err =>
-                            console.error(`Webhook processing failed for ${mediaId}:`, err)
-                        );
+                    // Handle different webhook types
+                    if (field === 'mentions') {
+                        // When someone mentions you (including self-mentions)
+                        // value.media_id contains the media where you were mentioned
+                        const mediaId = value.media_id;
+                        if (mediaId) {
+                            console.log(`Mention detected on media: ${mediaId}`);
+                            processInstagramMedia(mediaId, igUserId).catch(err =>
+                                console.error(`Mention webhook processing failed:`, err)
+                            );
+                        }
+                    } else if (field === 'comments') {
+                        // When someone comments on your post
+                        // value.media.id contains the media that was commented on
+                        const mediaId = value.media?.id;
+                        if (mediaId) {
+                            console.log(`Comment detected on media: ${mediaId}`);
+                            processInstagramMedia(mediaId, igUserId).catch(err =>
+                                console.error(`Comment webhook processing failed:`, err)
+                            );
+                        }
+                    } else if (field === 'media' || field === 'media_product_type') {
+                        // Standard media webhook (if available)
+                        const mediaId = value.id;
+                        if (mediaId) {
+                            console.log(`Media update detected: ${mediaId}`);
+                            processInstagramMedia(mediaId, igUserId).catch(err =>
+                                console.error(`Media webhook processing failed:`, err)
+                            );
+                        }
                     }
                 }
             }
