@@ -22,7 +22,39 @@ export async function processInstagramMedia(mediaId, igUserId, accountObj = null
     // 1. Find the connected account if not provided
     let account = accountObj;
     if (!account) {
-        account = await ConnectedAccount.findOne({ platformUserId: igUserId, platform: 'instagram' });
+        // If igUserId is "0" (test webhook) or invalid, try to find any Instagram account
+        if (!igUserId || igUserId === '0') {
+            console.log('⚠️ Invalid IG User ID (test webhook?), searching all Instagram accounts...');
+            const accounts = await ConnectedAccount.find({ platform: 'instagram' });
+
+            if (accounts.length === 0) {
+                console.error('No connected Instagram accounts found in database');
+                return null;
+            }
+
+            // Try each account until we find one that can access this media
+            for (const acc of accounts) {
+                const accessToken = decrypt(acc.accessToken);
+                if (!accessToken) continue;
+
+                // Test if this account can access the media
+                const testRes = await fetch(`https://graph.facebook.com/v19.0/${mediaId}?fields=id&access_token=${accessToken}`);
+                const testData = await testRes.json();
+
+                if (!testData.error) {
+                    console.log(`✅ Found account that can access media: ${acc.platformUserId}`);
+                    account = acc;
+                    break;
+                }
+            }
+
+            if (!account) {
+                console.error('No account has access to this media');
+                return null;
+            }
+        } else {
+            account = await ConnectedAccount.findOne({ platformUserId: igUserId, platform: 'instagram' });
+        }
     }
 
     if (!account) {
