@@ -5,6 +5,7 @@ import PostStatus from '@/models/PostStatus';
 import { pollInstagramAccount } from '@/lib/instagram';
 
 export const dynamic = 'force-dynamic'; // Ensure this route is never cached
+export const maxDuration = 60; // Allow 60 seconds (requires Pro plan but good practice)
 
 export async function GET(req) {
     try {
