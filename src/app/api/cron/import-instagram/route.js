@@ -43,6 +43,38 @@ export async function GET(req) {
             });
         }
 
+        // 3. Process Pending/Failed Jobs (Retry Mechanism)
+        // Find jobs that are 'pending' or recently 'failed' (auto-retry once)
+        const pendingJobs = await PostStatus.find({
+            status: { $in: ['pending', 'failed'] },
+            // Only retry failed jobs if they failed recently (e.g. within last hour) and haven't been retried too many times
+            // For MVP, just retry all pending.
+            updatedAt: { $gt: new Date(Date.now() - 60 * 60 * 1000) }
+        }).limit(3); // Limit to 3 to avoid timeout
+
+        const { executeCrosspostingJob } = await import('@/lib/worker');
+
+        let processedCount = 0;
+        for (const job of pendingJobs) {
+            // Check retry count to avoid infinite loops
+            if (job.retryCount >= 3) continue;
+
+            console.log(`Retrying job ${job._id} (Attempt ${job.retryCount + 1})`);
+
+            // Increment retry count
+            job.retryCount = (job.retryCount || 0) + 1;
+            await job.save();
+
+            // Run in background (fire & forget) but Vercel might kill it
+            // Better to await essential parts? No, await full to update status.
+            try {
+                await executeCrosspostingJob(job._id);
+                processedCount++;
+            } catch (e) {
+                console.error(`Job ${job._id} failed again:`, e);
+            }
+        }
+
         return NextResponse.json({
             success: true,
             message: 'Polling complete',
